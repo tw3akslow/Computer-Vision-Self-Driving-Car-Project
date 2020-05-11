@@ -40,23 +40,41 @@ def interest_region(image):
 
 def display_borders(image,lines):
     border_image = np.zeros_like(image)#automatically the image will be black
-    color=(0, 255, 0)
+    color=(0, 255, 0)#green
     if lines is not None: #We have to check if it actually detected any lines
         for line in lines:
-            print(lines)
+           # print(lines)
             x1, y1, x2, y2 = line.reshape(4)#We are basically reshaping our 2D array into a 1 dimensional array without changing its contents.
             cv2.line(border_image, (x1, y1), (x2, y2),color, 10)#draws a green  line with 10 thickness segment between our points in the image.
     return (border_image)
+
+def average_slope_intercept(image, lines):
+    leftside = []# For our left lane
+    rightside = [] #For our right lane
+    for line in lines:
+        x1,y1,x2,y2 = line.reshape(4) #We are basically reshaping our 2D array into a 1 dimensional array without changing its contents.
+        parameters = np.polyfit((x1, x2),(y1, y2),1)# Polyfit will fit a polynomial with coeficients that describe the slope and y intercept we use degree 1 so we get the parameters of a linear function.
+        #print(parameters)#Will print the slope and the y intercept.
+        slope = parameters[0]
+        y_intercept = parameters[1]
+        if slope < 0: #if the slope is negative we will append it to the left side
+            leftside.append((slope,y_intercept))
+        else:
+            rightside.append((slope, y_intercept))#Else we will apend it to the right side.
+    leftside_average = np.average(leftside, axis = 0)
+    rightside_average = np.average(rightside, axis = 0)
+
+
 
 image =cv2.imread("static /media/test_image.jpg") #This loads the image and returns it as a multidimensional numpy array containing the relative intensaties of each pixel in the array.
 road_image = np.copy(image) # it is important that we create a copy of our image so the changes we make dont affect the original image
 canny_image = canny(road_image)#sketch the gradients that pass the high tresholds with white and low tresholds with black as they fall below the low treshold.
 croped_img = interest_region(canny_image) #creates an image from a 2-dimensional numpy array.
 lines = cv2.HoughLinesP(croped_img, 2, np.pi/180, 100, np.array([]), minLineLength=40, maxLineGap=5)#Implements the probabilistic Hough transform algorithm for line detection. we will use 2 pixels for precision acompained with 1 degree precision in radians,our next argument will be our treshold that is the minimum amount of votes per bin needed to accept a candidate line in this case 100 .We will use a placeholder array for our lines argument  with our min lenght and gap arguments.
-#averageSI = average_slope_intercept(road_image , lines)
+average_lines = average_slope_intercept(road_image, lines)
 border_image = display_borders(road_image,lines)
-combined_img = cv2.addWeighted(road_image, 0.7, border_image, 1, 0) #Takes the sum of our color image with our border image.If its adding 0s (black portion of our image)to whatever intensity of the original image it will just stay the same its only when we add the pixel intensities of our lines with the original picture pixels that will see a diference.The numbers next to each image is = the weight  assigned to each image.The last parameter is the scalar value added to both arrays.
-cv2.imshow("results",canny_image)
+combined_img = cv2.addWeighted(road_image, 0.8, border_image, 1, 1) #Takes the sum of our color image with our border image.If its adding 0s (black portion of our image)to whatever intensity of the original image it will just stay the same its only when we add the pixel intensities of our lines with the original picture pixels that will see a diference.The numbers next to each image is = the weight  assigned to each image.The last parameter is the scalar value added to both arrays.
+cv2.imshow("results", combined_img)
 cv2.waitKey(0)# Will kill it when user presses any key
 
 
